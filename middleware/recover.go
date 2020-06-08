@@ -1,8 +1,9 @@
-package sqs
+package middleware
 
 import (
 	"fmt"
-	"go-sqs-worker/sqsworker"
+
+	"github.com/h1008/sqsworker"
 )
 
 func Recover() sqsworker.MiddlewareFunc {
