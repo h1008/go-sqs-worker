@@ -8,13 +8,13 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	sqs2 "github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	sqsworker "go-sqs-worker"
-	"go-sqs-worker/internal/mock"
+	"github.com/h1008/sqsworker"
+	"github.com/h1008/sqsworker/internal/mock"
 )
 
 const queueURL = "someQueueURL"
@@ -24,7 +24,7 @@ var _ = Describe("SQS Consumer", func() {
 	var sqsAPIMock *mock.MockSQSAPI
 	var consumer *sqsworker.Consumer
 
-	givenMessagesInQueue := func(messages ...*sqs2.ReceiveMessageOutput) {
+	givenMessagesInQueue := func(messages ...*sqs.ReceiveMessageOutput) {
 		for _, message := range messages {
 			sqsAPIMock.EXPECT().
 				ReceiveMessageWithContext(gomock.Any(), getReceiveParams(queueURL)).
@@ -32,25 +32,25 @@ var _ = Describe("SQS Consumer", func() {
 		}
 		sqsAPIMock.EXPECT().
 			ReceiveMessageWithContext(gomock.Any(), gomock.Any()).
-			Return(&sqs2.ReceiveMessageOutput{}, nil).
+			Return(&sqs.ReceiveMessageOutput{}, nil).
 			AnyTimes()
 	}
 
-	expectMessageToBeDeleted := func(message *sqs2.Message) {
-		expectedInput := &sqs2.DeleteMessageInput{
+	expectMessageToBeDeleted := func(message *sqs.Message) {
+		expectedInput := &sqs.DeleteMessageInput{
 			QueueUrl:      aws.String(queueURL),
 			ReceiptHandle: message.ReceiptHandle,
 		}
 
 		sqsAPIMock.EXPECT().
 			DeleteMessageWithContext(gomock.Any(), expectedInput).
-			Return(&sqs2.DeleteMessageOutput{}, nil)
+			Return(&sqs.DeleteMessageOutput{}, nil)
 	}
 
 	ignoreFurtherMessageDeletions := func() {
 		sqsAPIMock.EXPECT().
 			DeleteMessageWithContext(gomock.Any(), gomock.Any()).
-			Return(&sqs2.DeleteMessageOutput{}, nil).
+			Return(&sqs.DeleteMessageOutput{}, nil).
 			AnyTimes()
 	}
 
@@ -132,7 +132,7 @@ var _ = Describe("SQS Consumer", func() {
 
 			sqsAPIMock.EXPECT().
 				ReceiveMessageWithContext(gomock.Any(), gomock.Any()).
-				Return(&sqs2.ReceiveMessageOutput{}, nil).
+				Return(&sqs.ReceiveMessageOutput{}, nil).
 				AnyTimes()
 
 			ignoreFurtherMessageDeletions()
@@ -209,7 +209,7 @@ var _ = Describe("SQS Consumer", func() {
 
 				sqsAPIMock.EXPECT().
 					DeleteMessageWithContext(gomock.Any(), gomock.Any()).
-					Return(&sqs2.DeleteMessageOutput{}, nil).
+					Return(&sqs.DeleteMessageOutput{}, nil).
 					Times(0)
 
 				consumer.Handle(queueURL, func(c sqsworker.Context) error {
@@ -419,7 +419,7 @@ var _ = Describe("SQS Consumer", func() {
 		It("should stop waiting receive calls immediately", func() {
 			sqsAPIMock.EXPECT().
 				ReceiveMessageWithContext(gomock.Any(), getReceiveParams(queueURL)).
-				DoAndReturn(func(ctx context.Context, in *sqs2.ReceiveMessageInput) (*sqs2.ReceiveMessageOutput, error) {
+				DoAndReturn(func(ctx context.Context, in *sqs.ReceiveMessageInput) (*sqs.ReceiveMessageOutput, error) {
 					select {
 					case <-ctx.Done():
 						return nil, awserr.New("an error", "an error", ctx.Err())
@@ -489,10 +489,10 @@ var _ = Describe("SQS Consumer", func() {
 	})
 })
 
-func givenMessageWithBodies(messageBodies ...string) *sqs2.ReceiveMessageOutput {
-	r := new(sqs2.ReceiveMessageOutput)
+func givenMessageWithBodies(messageBodies ...string) *sqs.ReceiveMessageOutput {
+	r := new(sqs.ReceiveMessageOutput)
 	for idx, body := range messageBodies {
-		r.Messages = append(r.Messages, &sqs2.Message{
+		r.Messages = append(r.Messages, &sqs.Message{
 			Body:          aws.String(body),
 			ReceiptHandle: aws.String(fmt.Sprintf("rh-%d", idx)),
 		})
@@ -500,13 +500,13 @@ func givenMessageWithBodies(messageBodies ...string) *sqs2.ReceiveMessageOutput 
 	return r
 }
 
-func getReceiveParams(queueURL string) *sqs2.ReceiveMessageInput {
-	return &sqs2.ReceiveMessageInput{
+func getReceiveParams(queueURL string) *sqs.ReceiveMessageInput {
+	return &sqs.ReceiveMessageInput{
 		AttributeNames: []*string{
-			aws.String(sqs2.QueueAttributeNameAll),
+			aws.String(sqs.QueueAttributeNameAll),
 		},
 		MessageAttributeNames: []*string{
-			aws.String(sqs2.QueueAttributeNameAll),
+			aws.String(sqs.QueueAttributeNameAll),
 		},
 		QueueUrl:            aws.String(queueURL),
 		MaxNumberOfMessages: aws.Int64(1),
